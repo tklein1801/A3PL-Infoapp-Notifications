@@ -1,0 +1,27 @@
+name: Publish Docker image
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: |
+          docker build . -t ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
+
+      - name: Login
+        run: |
+          echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_USER }} --password-stdin
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
