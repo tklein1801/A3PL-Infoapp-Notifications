@@ -8,7 +8,7 @@ import { createLog } from './log';
 import { LogVariant } from '@dulliag/logger.js';
 
 const checkForUpdate = new CronJob('*/1 * * * *', async () => {
-  await createLog(LogVariant.LOG, 'Check for updates', 'Check for new ReallfieRPG updates');
+  // await createLog(LogVariant.LOG, 'Check for updates', 'Check for new ReallfieRPG updates');
   const LATEST_VERSION = await getLatestVersion('config.json');
   if (!LATEST_VERSION) {
     await createLog(
@@ -21,10 +21,8 @@ const checkForUpdate = new CronJob('*/1 * * * *', async () => {
   getChangelogs()
     .then(async (response) => {
       const LATEST_CHANGELOG = response.data[0];
-      console.log(LATEST_CHANGELOG.version === LATEST_VERSION);
-      console.log(LATEST_CHANGELOG.version, LATEST_VERSION);
       if (LATEST_CHANGELOG.version === LATEST_VERSION) {
-        await createLog(LogVariant.INFORMATION, 'Check for updates', 'No new update avaiable');
+        // await createLog(LogVariant.INFORMATION, 'Check for updates', 'No new update avaiable');
         return;
       }
 
