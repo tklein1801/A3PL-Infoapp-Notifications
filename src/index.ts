@@ -45,25 +45,27 @@ const checkForUpdate = new CronJob('*/1 * * * *', async () => {
               'Push-Notification',
               `Send push-notification to '${token.token}'`
             );
-            await sendNotification(token.token, {
-              version: LATEST_CHANGELOG.version,
-              updateType: updateType,
-            })
-              .then(async (response) => {
-                if (response.data.failure > 0) {
-                  await createLog(
-                    LogVariant.ERROR,
-                    'Push-Notification',
-                    `Sending push-notification for '${token}' failed`
-                  );
-                }
-                await createLog(
-                  LogVariant.INFORMATION,
-                  'Push-Notification',
-                  `Push-notification for device '${token.token}' sent successfully`
-                );
+            if (process.env.PRODUCTION === 'true') {
+              await sendNotification(token.token, {
+                version: LATEST_CHANGELOG.version,
+                updateType: updateType,
               })
-              .catch(async (err) => await createLog(LogVariant.ERROR, 'Push-Notification', err));
+                .then(async (response) => {
+                  if (response.data.failure > 0) {
+                    await createLog(
+                      LogVariant.ERROR,
+                      'Push-Notification',
+                      `Sending push-notification for '${token}' failed`
+                    );
+                  }
+                  await createLog(
+                    LogVariant.INFORMATION,
+                    'Push-Notification',
+                    `Push-notification for device '${token.token}' sent successfully`
+                  );
+                })
+                .catch(async (err) => await createLog(LogVariant.ERROR, 'Push-Notification', err));
+            }
           });
         })
         .catch(async (err) => await createLog(LogVariant.ERROR, 'Push-Notification', err))
@@ -77,8 +79,11 @@ const checkForUpdate = new CronJob('*/1 * * * *', async () => {
     .catch(async (err) => await createLog(LogVariant.ERROR, 'Push-Notification', err));
 });
 
-console.log(process.env.PRODUCTION);
-console.log(`Running in ${process.env.PRODUCTION === 'true' ? 'production' : 'development'}-mode!`);
+createLog(
+  LogVariant.INFORMATION,
+  'Starting',
+  `Running in ${process.env.PRODUCTION === 'true' ? 'production' : 'development'}-mode!`
+);
 
 checkForUpdate.fireOnTick();
 checkForUpdate.start();
