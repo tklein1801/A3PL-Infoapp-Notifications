@@ -12,5 +12,5 @@ const credentials: Credentials = {
 const LOGGER = new Client(Database.PG, credentials, process.env.APPLICATION);
 
 export const createLog = (variant: LogVariant, category: string, message: string) => {
-  return process.env.PRODUCTION! == 'true' ? LOGGER.log(variant, category, message) : null;
+  return LOGGER.log(variant, category, message);
 };
