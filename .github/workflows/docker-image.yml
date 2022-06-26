@@ -15,9 +15,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build Docker image
         run: |
-          docker build . -t ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
+          docker build --build-arg NPM_TOKEN=${NPM_TOKEN} . -t ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
           mkdir -p artifacts
           docker save ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }} > artifacts/docker-image.tar
+        env:
+          NPM_TOKEN: ${{ secrets.READ_PAT }}
 
       - name: Save Docker image
         uses: actions/upload-artifact@v2
@@ -45,8 +47,13 @@ jobs:
 
       - name: Login
         run: |
-          echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_USER }} --password-stdin
+          echo ${{ secrets.WRITE_PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_USER }} --password-stdin
 
       - name: Push Docker image
         run: |
           docker push ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
+
+      - name: Delete artifact
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          name: docker-artifact
