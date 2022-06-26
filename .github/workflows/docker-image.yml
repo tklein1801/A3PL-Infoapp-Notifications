@@ -71,24 +71,24 @@ jobs:
         with:
           name: docker-artifact
 
- deploy_image:
-  needs: publish_image
-  name: Deploy Docker image to server
-  runs-on: ubuntu-latest
-  environment: production
-  steps:
-    - name: Connect and deploy
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.SERVER }}
-        username: ${{ secrets.SSH_USERNAME }}
-        password: ${{ secrets.SSH_PASSWORD }}
-        port: 22
-        script: |
-          echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_USER }} --password-stdin
-          docker container stop infoapp-notifications:latest
-          docker container rm infoapp-notifications:latest
-          docker image rm ghcr.io/dulliag/infoapp-notifications:latest
-          docker pull ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
-          docker tag ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }} ghcr.io/dulliag/infoapp-notifications:latest
-          docker run -itd --restart on-failure:3 --name=infoapp-notifications:latest ghcr.io/dulliag/d2pb:latest
+  deploy_image:
+    needs: push_image
+    name: Deploy Docker image to server
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Connect and deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          script: |
+            echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_USER }} --password-stdin
+            docker container stop infoapp-notifications:latest
+            docker container rm infoapp-notifications:latest
+            docker image rm ghcr.io/dulliag/infoapp-notifications:latest
+            docker pull ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
+            docker tag ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }} ghcr.io/dulliag/infoapp-notifications:latest
+            docker run -itd --restart on-failure:3 --name=infoapp-notifications:latest ghcr.io/dulliag/d2pb:latest
