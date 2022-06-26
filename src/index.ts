@@ -77,6 +77,8 @@ const checkForUpdate = new CronJob('*/1 * * * *', async () => {
     .catch(async (err) => await createLog(LogVariant.ERROR, 'Push-Notification', err));
 });
 
+console.log(`Running in ${process.env.PRODUCTION === 'true' ? 'production' : 'development'}-mode!`);
+
 checkForUpdate.fireOnTick();
 checkForUpdate.start();
 
