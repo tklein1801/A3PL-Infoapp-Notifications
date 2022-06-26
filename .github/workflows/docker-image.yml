@@ -13,7 +13,6 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v3
-
       - name: Create `.env`-file
         uses: SpicyPizza/create-envfile@v1.3
         with:
@@ -28,6 +27,8 @@ jobs:
 
       - name: Build Docker image
         run: |
+          rm .npmrc 
+          echo $'@dulliag:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken='$NPM_TOKEN >> .npmrc
           docker build --secret id=npm,src=.npmrc . -t ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
           mkdir -p artifacts
           docker save ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }} > artifacts/docker-image.tar
@@ -86,9 +87,9 @@ jobs:
           port: 22
           script: |
             echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_USER }} --password-stdin
-            docker container stop infoapp-notifications:latest
-            docker container rm infoapp-notifications:latest
+            docker container stop infoapp-notifications
+            docker container rm infoapp-notifications
             docker image rm ghcr.io/dulliag/infoapp-notifications:latest
             docker pull ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }}
             docker tag ghcr.io/dulliag/infoapp-notifications:${{ github.ref_name }} ghcr.io/dulliag/infoapp-notifications:latest
-            docker run -itd --restart on-failure:3 --name=infoapp-notifications:latest ghcr.io/dulliag/d2pb:latest
+            docker run -itd --restart on-failure:3 --name=infoapp-notifications ghcr.io/dulliag/infoapp-notifications:latest
