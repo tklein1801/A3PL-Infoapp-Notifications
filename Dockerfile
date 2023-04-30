@@ -2,7 +2,7 @@ FROM node:alpine
 
 LABEL org.opencontainers.image.source https://github.com/DulliAG/Infoapp-Notifications
 
-WORKDIR /usr/src/infoapp-notifications/
+WORKDIR /app/infoapp_notifications
 
 COPY package*.json ./
 
@@ -12,4 +12,4 @@ COPY . .
 
 RUN npm run build
 
-CMD ["node", "out/index.js"]
+CMD ["npm", "start"]

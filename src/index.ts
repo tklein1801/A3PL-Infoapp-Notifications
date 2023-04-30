@@ -4,25 +4,20 @@ import { CronJob } from 'cron';
 import axios from 'axios';
 import { IChangelog, INotificationToken, ModUpdate } from './types';
 import { readFile, writeFile } from 'fs/promises';
-import { createLog } from './log';
-import { LogVariant } from '@dulliag/logger.js';
+import { LOGGER } from './log';
 
 const checkForUpdate = new CronJob('*/1 * * * *', async () => {
-  // await createLog(LogVariant.LOG, 'Check for updates', 'Check for new ReallfieRPG updates');
+  // await LOGGER.log('LOG', 'Check for updates', 'Check for new Panthor updates');
   const LATEST_VERSION = await getLatestVersion('config.json');
   if (!LATEST_VERSION) {
-    await createLog(
-      LogVariant.ERROR,
-      'Get `config.json`',
-      `Couldn't get the latest served version`
-    );
+    await LOGGER.log('ERROR', 'Get `config.json`', `Couldn't get the latest served version`);
   }
 
   getChangelogs()
     .then(async (response) => {
       const LATEST_CHANGELOG = response.data[0];
       if (LATEST_CHANGELOG.version === LATEST_VERSION) {
-        // await createLog(LogVariant.INFORMATION, 'Check for updates', 'No new update avaiable');
+        // await LOGGER.log('INFO', 'Check for updates', 'No new update avaiable');
         return;
       }
 
@@ -31,17 +26,17 @@ const checkForUpdate = new CronJob('*/1 * * * *', async () => {
           ? 'MOD'
           : 'MISSION';
 
-      await createLog(LogVariant.LOG, 'Push Tokens', 'Retrieving active device push tokens');
+      await LOGGER.log('LOG', 'Push Tokens', 'Retrieving active device push tokens');
       getTokens()
         .then(async (response) => {
           const TOKENS = response.data;
           if (TOKENS.length < 1) {
-            await createLog(LogVariant.INFORMATION, 'Push Tokens', 'No tokens found');
+            await LOGGER.log('INFO', 'Push Tokens', 'No tokens found');
             return;
           }
           TOKENS.forEach(async (token) => {
-            await createLog(
-              LogVariant.LOG,
+            await LOGGER.log(
+              'LOG',
               'Push-Notification',
               `Send push-notification to '${token.token}'`
             );
@@ -52,35 +47,32 @@ const checkForUpdate = new CronJob('*/1 * * * *', async () => {
               })
                 .then(async (response) => {
                   if (response.data.failure > 0) {
-                    await createLog(
-                      LogVariant.ERROR,
+                    await LOGGER.log(
+                      'ERROR',
                       'Push-Notification',
                       `Sending push-notification for '${token}' failed`
                     );
                   }
-                  await createLog(
-                    LogVariant.INFORMATION,
+                  await LOGGER.log(
+                    'INFO',
                     'Push-Notification',
                     `Push-notification for device '${token.token}' sent successfully`
                   );
                 })
-                .catch(async (err) => await createLog(LogVariant.ERROR, 'Push-Notification', err));
+                .catch(async (err) => await LOGGER.log('ERROR', 'Push-Notification', err));
             }
           });
         })
-        .catch(async (err) => await createLog(LogVariant.ERROR, 'Push-Notification', err))
-        .finally(
-          async () =>
-            await createLog(LogVariant.INFORMATION, 'Push-Notification', 'Processing complete')
-        );
+        .catch(async (err) => await LOGGER.log('ERROR', 'Push-Notification', err))
+        .finally(async () => await LOGGER.log('INFO', 'Push-Notification', 'Processing complete'));
 
       await saveNewVersion('config.json', LATEST_CHANGELOG.version);
     })
-    .catch(async (err) => await createLog(LogVariant.ERROR, 'Push-Notification', err));
+    .catch(async (err) => await LOGGER.log('ERROR', 'Push-Notification', err));
 });
 
-createLog(
-  LogVariant.INFORMATION,
+LOGGER.log(
+  'INFO',
   'Starting',
   `Running in ${process.env.PRODUCTION === 'true' ? 'production' : 'development'}-mode!`
 );
@@ -101,7 +93,7 @@ async function saveNewVersion(file: string, version: string) {
 
 async function getChangelogs() {
   try {
-    const response = await axios.get<IChangelog>('https://api.realliferpg.de/v1/changelog');
+    const response = await axios.get<IChangelog>('https://api.panthor.de/v1/changelog');
     if (response.status !== 200) throw new Error(response.statusText);
     return response.data;
   } catch (err) {
@@ -110,17 +102,14 @@ async function getChangelogs() {
 }
 
 async function getTokens() {
-  if (!process.env.DAG_SERVER_KEY) throw "Enviroment variable 'DAG_SERVER_KEY' not set";
-  return axios.post<INotificationToken[]>(
-    'https://api.dulliag.de/app/v1/tokens',
-    {},
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `key ${process.env.DAG_SERVER_KEY}`,
-      },
-    }
-  );
+  if (!process.env.KLEITHOR_AUTHORIZATION_KEY)
+    throw "Enviroment variable 'KLEITHOR_AUTHORIZATION_KEY' not set";
+  return axios.get<INotificationToken[]>('https://backend.tklein.it/v1/infoapp/', {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: ('Bearer ' + process.env.KLEITHOR_AUTHORIZATION_KEY) as string,
+    },
+  });
 }
 
 async function sendNotification(
@@ -141,9 +130,9 @@ async function sendNotification(
       to: devicePushToken,
       priority: 10,
       data: {
-        experienceId: '@tklein1801/A3RLRPG-Infoapp',
-        scopeKey: '@tklein1801/A3RLRPG-Infoapp',
-        title: 'ReallifeRPG Update v' + version,
+        experienceId: '@tklein1801/A3PLI',
+        scopeKey: '@tklein1801/A3PLI',
+        title: 'Panthor Update v' + version,
         message:
           updateType === 'MISSION'
             ? 'Es steht eine veränderte Missionsdatei zur verfügung'

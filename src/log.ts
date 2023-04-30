@@ -1,16 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { Client, Credentials, Database, LogVariant } from '@dulliag/logger.js';
+import { Client, ClientOptions } from '@kleithor/logger';
 
-const credentials: Credentials = {
-  host: process.env.DB_HOST!,
-  user: process.env.DB_USER!,
-  password: process.env.DB_PASSWORD!,
-  database: process.env.DB_DATABASE!,
+export const options: ClientOptions = {
+  application: process.env.APPLICATION as string,
+  saveLogs: process.env.PRODUCTION === 'true',
 };
 
-const LOGGER = new Client(Database.PG, credentials, process.env.APPLICATION);
-
-export const createLog = (variant: LogVariant, category: string, message: string) => {
-  return LOGGER.log(variant, category, message);
-};
+export const LOGGER = new Client(process.env.DB_CONNECTION_URL as string, options);

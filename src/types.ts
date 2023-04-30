@@ -1,11 +1,11 @@
 export type ModUpdate = 'MISSION' | 'MOD';
 
-export interface INotificationToken {
+export type INotificationToken = {
   id: number;
-  active: 1 | 0;
+  active: boolean;
   token: string;
   created_at: Date;
-}
+};
 
 export interface IChangelog {
   data: {
