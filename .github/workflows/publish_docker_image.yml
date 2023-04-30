@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: ghcr.io/DulliAG/Infoapp-Notifications
+  IMAGE_NAME: ghcr.io/dulliag/infoapp-notifications
 
 jobs:
   build_image:

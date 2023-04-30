@@ -6,7 +6,7 @@ on:
     types: [trigger_deployment]
 
 env:
-  IMAGE_NAME: ghcr.io/tklein1801/d2pb
+  IMAGE_NAME: ghcr.io/dulliag/infoapp-notifications
 
 jobs:
   renew_docker_compose:
@@ -23,9 +23,8 @@ jobs:
           port: 22
           script: |
             echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_USER }} --password-stdin
-            docker container stop dulli-bot
-            docker container rm dulli-bot
-            docker image rm ${{env.IMAGE_NAME}}:latest
-            docker pull ${{env.IMAGE_NAME}}:${{ github.ref_name }}
-            docker tag ${{env.IMAGE_NAME}}:${{ github.ref_name }} ${{env.IMAGE_NAME}}:latest
-            docker run -itd --env-file '/home/dulliag/dullibot.env' --restart on-failure:3 --name=dulli-bot ${{env.IMAGE_NAME}}:latest
+            docker stop a3pli-notifications || true
+            docker rm a3pli-notifications || true
+            docker image rm ${{env.IMAGE_NAME}}:latest || true
+            docker pull ${{env.IMAGE_NAME}}:latest
+            docker run -itd --env-file '/home/dulliag/a3pli.env' --restart on-failure:3 --name=a3pli-notifications ${{env.IMAGE_NAME}}:latest
