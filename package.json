@@ -2,9 +2,9 @@
   "name": "update-notification-service",
   "version": "1.1.5",
   "description": "",
-  "main": "out/index.js",
+  "main": "lib/index.js",
   "scripts": {
-    "start": "node out/index.js",
+    "start": "node lib/index.js",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "release": "standard-version"
