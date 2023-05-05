@@ -1,149 +1,102 @@
-import dotenv from 'dotenv';
-dotenv.config();
 import { CronJob } from 'cron';
-import axios from 'axios';
-import { IChangelog, INotificationToken, ModUpdate } from './types';
-import { readFile, writeFile } from 'fs/promises';
 import { LOGGER } from './log';
+import { LocalConfig, LocalConfigService } from './services/LocalConfig.service';
+import type { Changelog, ModUpdate } from './types';
+import { PanthorService } from './services/Panthor.service';
+import { NotificationService } from './services/Notification.service';
 
+const PRODUCTION = process.env.PRODUCTION === 'true';
 const checkForUpdate = new CronJob('*/1 * * * *', async () => {
   // await LOGGER.log('LOG', 'Check for updates', 'Check for new Panthor updates');
-  const LATEST_VERSION = await getLatestVersion('config.json');
-  if (!LATEST_VERSION) {
-    await LOGGER.log('ERROR', 'Get `config.json`', `Couldn't get the latest served version`);
-  }
+  let latestServedVersion: LocalConfig['latest_version'],
+    latestPublishedChangelog: Changelog | null,
+    updateType: ModUpdate;
 
-  getChangelogs()
-    .then(async (response) => {
-      const LATEST_CHANGELOG = response.data[0];
-      if (LATEST_CHANGELOG.version === LATEST_VERSION) {
-        // await LOGGER.log('INFO', 'Check for updates', 'No new update avaiable');
-        return;
+  try {
+    latestServedVersion = await LocalConfigService.getLatesServedtChangelogVersion();
+
+    latestPublishedChangelog = await PanthorService.getLatestChangelog();
+    if (latestPublishedChangelog === null) {
+      return await LOGGER.log(
+        'WARN',
+        'Retrieve changelogs',
+        "Couldn't retrieve the latest published changelog"
+      );
+    }
+
+    if (latestPublishedChangelog.version === latestServedVersion) {
+      return await LOGGER.log('INFO', 'Compare versions', 'No new changelog available');
+    }
+
+    updateType =
+      latestPublishedChangelog.change_mod.length > 0 ||
+      latestPublishedChangelog.change_map.length > 0
+        ? 'MOD'
+        : 'MISSION';
+
+    await LOGGER.log('LOG', 'Retrieve device tokens', 'Retrieving active device push tokens');
+    const { data } = await NotificationService.getActiveDeviceTokens();
+    if (!data || data.length === 0) {
+      return await LOGGER.log('WARN', 'Retrieve device tokens', "Couldn't retrieve device tokens");
+    }
+    const notificationProps = {
+      updateType: updateType,
+      version: latestPublishedChangelog.version,
+    };
+    data.forEach(async (deviceToken) => {
+      await LOGGER.log(
+        'LOG',
+        'Trigger push notification',
+        `Trigger push notification for '${deviceToken.id}'`
+      );
+      if (PRODUCTION) {
+        try {
+          await NotificationService.triggerNotification(deviceToken.token, notificationProps);
+          await LOGGER.log(
+            'LOG',
+            'Trigger push notification',
+            `Push notification for '${deviceToken.id}' was triggered`
+          );
+        } catch (error) {
+          await LOGGER.log(
+            'ERROR',
+            'Trigger push notification',
+            `Couldn't trigger push notification for '${deviceToken.id}'`
+          );
+        }
+      } else {
+        console.warn(`Didn't trigger push notification for ${deviceToken.token}`);
       }
-
-      const updateType: ModUpdate =
-        LATEST_CHANGELOG.change_mod.length > 0 || LATEST_CHANGELOG.change_map.length > 0
-          ? 'MOD'
-          : 'MISSION';
-
-      await LOGGER.log('LOG', 'Push Tokens', 'Retrieving active device push tokens');
-      getTokens()
-        .then(async (response) => {
-          const TOKENS = response.data;
-          if (TOKENS.length < 1) {
-            await LOGGER.log('INFO', 'Push Tokens', 'No tokens found');
-            return;
-          }
-          TOKENS.forEach(async (token) => {
-            await LOGGER.log(
-              'LOG',
-              'Push-Notification',
-              `Send push-notification to '${token.token}'`
-            );
-            if (process.env.PRODUCTION === 'true') {
-              await sendNotification(token.token, {
-                version: LATEST_CHANGELOG.version,
-                updateType: updateType,
-              })
-                .then(async (response) => {
-                  if (response.data.failure > 0) {
-                    await LOGGER.log(
-                      'ERROR',
-                      'Push-Notification',
-                      `Sending push-notification for '${token}' failed`
-                    );
-                  }
-                  await LOGGER.log(
-                    'INFO',
-                    'Push-Notification',
-                    `Push-notification for device '${token.token}' sent successfully`
-                  );
-                })
-                .catch(async (err) => await LOGGER.log('ERROR', 'Push-Notification', err));
-            }
-          });
-        })
-        .catch(async (err) => await LOGGER.log('ERROR', 'Push-Notification', err))
-        .finally(async () => await LOGGER.log('INFO', 'Push-Notification', 'Processing complete'));
-
-      await saveNewVersion('config.json', LATEST_CHANGELOG.version);
-    })
-    .catch(async (err) => await LOGGER.log('ERROR', 'Push-Notification', err));
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      await LOGGER.log('ERROR', error.name, error.message);
+    } else await LOGGER.log('ERROR', 'unknown', String(error));
+  } finally {
+    // await LOGGER.close();
+  }
 });
 
-LOGGER.log(
-  'INFO',
-  'Starting',
-  `Running in ${process.env.PRODUCTION === 'true' ? 'production' : 'development'}-mode!`
-);
-
-checkForUpdate.fireOnTick();
-checkForUpdate.start();
-
-async function getLatestVersion(file: string) {
-  const data = JSON.parse(await readFile(file, 'utf-8')).latest_version;
-  // @ts-ignore
-  return data;
-}
-
-async function saveNewVersion(file: string, version: string) {
-  await writeFile(file, JSON.stringify({ latest_version: version }));
-  return await readFile(file);
-}
-
-async function getChangelogs() {
-  try {
-    const response = await axios.get<IChangelog>('https://api.panthor.de/v1/changelog');
-    if (response.status !== 200) throw new Error(response.statusText);
-    return response.data;
-  } catch (err) {
-    throw err;
-  }
-}
-
-async function getTokens() {
-  if (!process.env.KLEITHOR_AUTHORIZATION_KEY)
-    throw "Enviroment variable 'KLEITHOR_AUTHORIZATION_KEY' not set";
-  return axios.get<INotificationToken[]>('https://backend.tklein.it/v1/infoapp/', {
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: ('Bearer ' + process.env.KLEITHOR_AUTHORIZATION_KEY) as string,
-    },
-  });
-}
-
-async function sendNotification(
-  devicePushToken: string,
-  { updateType, version }: { updateType: ModUpdate; version: string }
-) {
-  if (!process.env.FCM_SERVER_KEY) throw "Enviroment variable 'FCM_SERVER_KEY' not set";
-
-  return axios.post<{
-    multicast_id: number;
-    success: number;
-    failure: number;
-    canonical_ids: number;
-    results: any[];
-  }>(
-    'https://fcm.googleapis.com/fcm/send',
-    {
-      to: devicePushToken,
-      priority: 10,
-      data: {
-        experienceId: '@tklein1801/A3PLI',
-        scopeKey: '@tklein1801/A3PLI',
-        title: 'Panthor Update v' + version,
-        message:
-          updateType === 'MISSION'
-            ? 'Es steht eine veränderte Missionsdatei zur verfügung'
-            : 'Es steht ein neues Modupdate im Launcher zur verfügung',
-      },
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'key=' + process.env.FCM_SERVER_KEY,
-      },
-    }
+(async () => {
+  await LOGGER.log(
+    'LOG',
+    'Starting',
+    `Running in ${PRODUCTION ? 'production' : 'development'}-mode!`
   );
-}
+
+  // Before we start the task, we get the latest version and save it in our local config to prevent unnecessary triggered push notifications
+  let success = false;
+  do {
+    await LOGGER.log('LOG', 'Starting', 'Saving latest published changelog-version');
+    const latestPublishedChangelog = await PanthorService.getLatestChangelog();
+    if (latestPublishedChangelog) {
+      success = await LocalConfigService.saveFile({
+        latest_version: latestPublishedChangelog.version,
+      });
+    }
+  } while (!success);
+
+  await LOGGER.log('LOG', 'Starting', `Starting job`);
+  checkForUpdate.fireOnTick();
+  checkForUpdate.start();
+})();
