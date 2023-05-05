@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.6](https://github.com/DulliAG/Infoapp-Notifications/compare/v1.1.5...v1.1.6) (2023-05-05)
+
+
+### Bug Fixes
+
+* Use correct build-dir ([a1dde98](https://github.com/DulliAG/Infoapp-Notifications/commit/a1dde985a66986e49465731afd3ea7bba5fcfd62))
+
 ### [1.1.5](https://github.com/DulliAG/Infoapp-Notifications/compare/v1.1.4...v1.1.5) (2023-05-05)
 
 ### [1.1.4](https://github.com/DulliAG/Infoapp-Notifications/compare/v1.1.3...v1.1.4) (2023-04-30)
