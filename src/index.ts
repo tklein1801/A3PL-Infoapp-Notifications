@@ -25,7 +25,8 @@ const checkForUpdate = new CronJob('*/1 * * * *', async () => {
     }
 
     if (latestPublishedChangelog.version === latestServedVersion) {
-      return await LOGGER.log('INFO', 'Compare versions', 'No new changelog available');
+      // return await LOGGER.log('INFO', 'Compare versions', 'No new changelog available');
+      return console.log('INFO', 'Compare versions', 'No new changelog available');
     }
 
     updateType =
